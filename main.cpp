@@ -3,7 +3,27 @@
 struct Vec3
 {
   float x, y, z;
+
+  Vec3 operator * (float f) const
+  {
+    return { x* f, y* f, z* f };
+  }
+
+  Vec3 operator + (Vec3 other) const
+  {
+    return { x + other.x, y + other.y, z + other.z };
+  }
+
+  Vec3 operator - (Vec3 other) const
+  {
+    return { x - other.x, y - other.y, z - other.z };
+  }
 };
+
+float dotProduct(Vec3 a, Vec3 b)
+{
+  return a.x * b.x + a.y * b.y + a.z * b.z;
+}
 
 struct Vec2
 {
@@ -126,9 +146,18 @@ void packTriangles(Scene& s)
 // -----------------------------------------------------------------------------
 // lightmapp.cpp
 
-Pixel fragmentShader(Vec3 uvw)
+// uniforms
+Vec3 lightPos;
+Vec3 lightColor;
+
+Pixel fragmentShader(Vec3 pos)
 {
-  return { uvw.x, uvw.y, uvw.z, 1 };
+  auto delta = pos - lightPos;
+  float lightness = 10.0f / dotProduct(delta, delta);
+  return { lightness* lightColor.x,
+                                 lightness* lightColor.y,
+                                 lightness* lightColor.z,
+           1 };
 }
 
 Vec3 barycentric(Vec2 p, Vec2 a, Vec2 b, Vec2 c)
@@ -151,7 +180,12 @@ Vec3 barycentric(Vec2 p, Vec2 a, Vec2 b, Vec2 c)
   return r;
 }
 
-void rasterizeTriangle(Image img, Vec2 v1, Vec2 v2, Vec2 v3)
+struct Attributes
+{
+  Vec3 pos;
+};
+
+void rasterizeTriangle(Image img, Vec2 v1, Attributes a1, Vec2 v2, Attributes a2, Vec2 v3, Attributes a3)
 {
   auto const x1 = (int)(v1.x * img.width);
   auto const x2 = (int)(v2.x * img.width);
@@ -204,7 +238,9 @@ void rasterizeTriangle(Image img, Vec2 v1, Vec2 v2, Vec2 v3)
       if(halfSpace12 && halfSpace23 && halfSpace31)
       {
         auto p = Vec2 { (float)x / img.width, (float)y / img.height };
-        colorBuffer[x] = fragmentShader(barycentric(p, v1, v2, v3));
+        auto bary = barycentric(p, v1, v2, v3);
+        auto pos = a1.pos * bary.x + a2.pos * bary.y + a3.pos * bary.z;
+        colorBuffer[x] = fragmentShader(pos);
       }
     }
 
@@ -214,12 +250,21 @@ void rasterizeTriangle(Image img, Vec2 v1, Vec2 v2, Vec2 v3)
 
 void bakeLightmap(Scene& s, Image img)
 {
+  lightPos = s.lights[0].pos;
+  lightColor = s.lights[0].color;
+
   for(auto& t : s.triangles)
   {
+    Attributes a1;
+    a1.pos = t.v[0].pos;
+    Attributes a2;
+    a2.pos = t.v[1].pos;
+    Attributes a3;
+    a3.pos = t.v[2].pos;
     rasterizeTriangle(img,
-                      t.v[0].uvLightmap,
-                      t.v[1].uvLightmap,
-                      t.v[2].uvLightmap);
+                      t.v[0].uvLightmap, a1,
+                      t.v[1].uvLightmap, a2,
+                      t.v[2].uvLightmap, a3);
   }
 }
 
@@ -293,7 +338,7 @@ Scene createDummyScene()
   s.triangles.push_back({ v1, v2, v3 });
 
   s.lights.push_back({
-    { 2, 2, 2 }, { 1, 0, 0 }, 0.01
+    { 2, 1, 3 }, { 0.0, 0.4, 0.5 }, 0.01
   });
   return s;
 }
