@@ -15,6 +15,11 @@ struct Vec2
   }
 };
 
+float dotProduct(Vec2 a, Vec2 b)
+{
+  return a.x * b.x + a.y * b.y;
+}
+
 // -----------------------------------------------------------------------------
 // scene.h
 
@@ -121,9 +126,29 @@ void packTriangles(Scene& s)
 // -----------------------------------------------------------------------------
 // lightmapp.cpp
 
-Pixel fragmentShader()
+Pixel fragmentShader(Vec3 uvw)
 {
-  return { 1, 1, 1, 1 };
+  return { uvw.x, uvw.y, uvw.z, 1 };
+}
+
+Vec3 barycentric(Vec2 p, Vec2 a, Vec2 b, Vec2 c)
+{
+  auto v0 = b - a;
+  auto v1 = c - a;
+  auto v2 = p - a;
+
+  float d00 = dotProduct(v0, v0);
+  float d01 = dotProduct(v0, v1);
+  float d11 = dotProduct(v1, v1);
+  float d20 = dotProduct(v2, v0);
+  float d21 = dotProduct(v2, v1);
+  float denom = d00 * d11 - d01 * d01;
+
+  Vec3 r;
+  r.y = (d11 * d20 - d01 * d21) / denom;
+  r.z = (d00 * d21 - d01 * d20) / denom;
+  r.x = 1.0f - r.y - r.z;
+  return r;
 }
 
 void rasterizeTriangle(Image img, Vec2 v1, Vec2 v2, Vec2 v3)
@@ -178,7 +203,8 @@ void rasterizeTriangle(Image img, Vec2 v1, Vec2 v2, Vec2 v3)
 
       if(halfSpace12 && halfSpace23 && halfSpace31)
       {
-        colorBuffer[x] = fragmentShader();
+        auto p = Vec2 { (float)x / img.width, (float)y / img.height };
+        colorBuffer[x] = fragmentShader(barycentric(p, v1, v2, v3));
       }
     }
 
