@@ -355,9 +355,9 @@ Scene loadScene(const char* path)
       int count = sscanf(buffer, "%d %d %d", &i1, &i2, &i3);
       assert(count == 3);
       s.triangles.push_back({
-        vertices[i1],
-        vertices[i2],
-        vertices[i3]
+        vertices[i1-1],
+        vertices[i2-1],
+        vertices[i3-1]
       });
     }
     else
@@ -437,6 +437,67 @@ void dumpScene(Scene const& s, const char* filename)
   fclose(fp);
 }
 
+void dumpSceneAsObj(Scene const& s, const char* filename)
+{
+  FILE* fp = fopen(filename, "wb");
+  std::vector<Vertex> allVertices;
+  std::vector<int> allIndices;
+
+  for(auto& t : s.triangles)
+  {
+    for(auto& vertex : t.v)
+    {
+      auto i = (int)allVertices.size();
+      allVertices.push_back(vertex);
+      allIndices.push_back(i);
+    }
+  }
+
+  fprintf(fp, "# generated\n");
+
+  fprintf(fp, "# %d vertices\n", (int)allVertices.size());
+
+#define FMT "%.1f"
+
+  for(auto& vertex : allVertices)
+  {
+    fprintf(fp, "v " FMT " " FMT " " FMT "\n",
+        vertex.pos.x, vertex.pos.y, vertex.pos.z);
+  }
+
+  for(auto& vertex : allVertices)
+  {
+    fprintf(fp, "vn " FMT " " FMT " " FMT "\n",
+        vertex.N.x, vertex.N.y, vertex.N.z);
+  }
+
+  for(auto& vertex : allVertices)
+  {
+    fprintf(fp, "vt " FMT " " FMT "\n",
+        vertex.uvLightmap.x, vertex.uvLightmap.y);
+  }
+
+#undef FMT
+
+  int k = 0;
+
+  for(auto i : allIndices)
+  {
+    if(k % 3 == 0)
+      fprintf(fp, "f");
+
+    int idx = i + 1;
+    fprintf(fp, " %d/%d/%d", idx, idx, idx);
+
+    if((k + 1) % 3 == 0)
+      fprintf(fp, "\n");
+
+    ++k;
+  }
+
+  fclose(fp);
+}
+
 using namespace std;
 
 // # input file format example
@@ -460,7 +521,8 @@ int main()
   });
 
   packTriangles(s);
-  dumpScene(s, "mesh.out.out");
+  dumpScene(s, "mesh.out.txt");
+  dumpSceneAsObj(s, "mesh.out.obj");
 
   Image img;
   img.stride = img.width = img.height = 2048;
