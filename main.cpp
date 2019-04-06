@@ -4,20 +4,9 @@ struct Vec3
 {
   float x, y, z;
 
-  Vec3 operator * (float f) const
-  {
-    return { x* f, y* f, z* f };
-  }
-
-  Vec3 operator + (Vec3 other) const
-  {
-    return { x + other.x, y + other.y, z + other.z };
-  }
-
-  Vec3 operator - (Vec3 other) const
-  {
-    return { x - other.x, y - other.y, z - other.z };
-  }
+  Vec3 operator * (float f) const { return { x* f, y* f, z* f }; }
+  Vec3 operator + (Vec3 other) const { return { x + other.x, y + other.y, z + other.z }; }
+  Vec3 operator - (Vec3 other) const { return { x - other.x, y - other.y, z - other.z }; }
 };
 
 float dotProduct(Vec3 a, Vec3 b)
@@ -29,10 +18,7 @@ struct Vec2
 {
   float x, y;
 
-  Vec2 operator - (Vec2 other) const
-  {
-    return { x - other.x, y - other.y };
-  }
+  Vec2 operator - (Vec2 other) const { return { x - other.x, y - other.y }; }
 };
 
 float dotProduct(Vec2 a, Vec2 b)
@@ -350,6 +336,7 @@ Scene loadScene(const char* path)
   assert(fp);
   char buffer[256];
   bool triangleMode = false;
+
   while(fgets(buffer, sizeof buffer, fp))
   {
     if(buffer[0] == '#')
@@ -357,8 +344,8 @@ Scene loadScene(const char* path)
 
     if(buffer[0] == '@')
     {
-       triangleMode = true;
-       continue;
+      triangleMode = true;
+      continue;
     }
 
     if(triangleMode)
@@ -368,22 +355,23 @@ Scene loadScene(const char* path)
       int count = sscanf(buffer, "%d %d %d", &i1, &i2, &i3);
       assert(count == 3);
       s.triangles.push_back({
-          vertices[i1],
-          vertices[i2],
-          vertices[i3]
-          });
+        vertices[i1],
+        vertices[i2],
+        vertices[i3]
+      });
     }
     else
     {
       Vertex vertex;
       int count = sscanf(buffer,
-          "%f %f %f - %f %f %f",
-          &vertex.pos.x, &vertex.pos.y, &vertex.pos.z,
-          &vertex.N.x, &vertex.N.y, &vertex.N.z);
+                         "%f %f %f - %f %f %f",
+                         &vertex.pos.x, &vertex.pos.y, &vertex.pos.z,
+                         &vertex.N.x, &vertex.N.y, &vertex.N.z);
       assert(count == 6);
       vertices.push_back(vertex);
     }
   }
+
   fclose(fp);
 
   return s;
