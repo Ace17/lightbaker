@@ -377,8 +377,9 @@ Scene loadScene(const char* path)
   return s;
 }
 
-void dumpScene(Scene const& s, FILE* fp)
+void dumpScene(Scene const& s, const char* filename)
 {
+  FILE* fp = fopen(filename, "wb");
   std::vector<Vertex> allVertices;
   std::vector<int> allIndices;
 
@@ -432,6 +433,8 @@ void dumpScene(Scene const& s, FILE* fp)
 
     ++k;
   }
+
+  fclose(fp);
 }
 
 using namespace std;
@@ -457,7 +460,7 @@ int main()
   });
 
   packTriangles(s);
-  dumpScene(s, stdout);
+  dumpScene(s, "mesh.out.out");
 
   Image img;
   img.stride = img.width = img.height = 2048;
