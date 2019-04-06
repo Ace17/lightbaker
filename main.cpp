@@ -337,9 +337,55 @@ Scene createDummyScene()
   v3.pos.x += 5;
   s.triangles.push_back({ v1, v2, v3 });
 
-  s.lights.push_back({
-    { 2, 1, 3 }, { 0.0, 0.4, 0.5 }, 0.01
-  });
+  return s;
+}
+
+Scene loadScene(const char* path)
+{
+  std::vector<Vertex> vertices;
+
+  Scene s;
+
+  FILE* fp = fopen(path, "rb");
+  assert(fp);
+  char buffer[256];
+  bool triangleMode = false;
+  while(fgets(buffer, sizeof buffer, fp))
+  {
+    if(buffer[0] == '#')
+      continue;
+
+    if(buffer[0] == '@')
+    {
+       triangleMode = true;
+       continue;
+    }
+
+    if(triangleMode)
+    {
+      Triangle triangle;
+      int i1, i2, i3;
+      int count = sscanf(buffer, "%d %d %d", &i1, &i2, &i3);
+      assert(count == 3);
+      s.triangles.push_back({
+          vertices[i1],
+          vertices[i2],
+          vertices[i3]
+          });
+    }
+    else
+    {
+      Vertex vertex;
+      int count = sscanf(buffer,
+          "%f %f %f - %f %f %f",
+          &vertex.pos.x, &vertex.pos.y, &vertex.pos.z,
+          &vertex.N.x, &vertex.N.y, &vertex.N.z);
+      assert(count == 6);
+      vertices.push_back(vertex);
+    }
+  }
+  fclose(fp);
+
   return s;
 }
 
@@ -415,6 +461,13 @@ using namespace std;
 int main()
 {
   auto s = createDummyScene();
+  s = loadScene("mesh.txt");
+
+  // manually add a light
+  s.lights.push_back({
+    { 2, 1, 3 }, { 0.0, 0.4, 0.5 }, 0.01
+  });
+
   packTriangles(s);
   dumpScene(s, stdout);
 
