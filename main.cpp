@@ -99,6 +99,7 @@ inline float max(float a, float b)
 // -----------------------------------------------------------------------------
 // packer.cpp
 #include <cmath>
+#include <cstdio>
 
 // set the uvLightmap coordinates
 void packTriangles(Scene& s)
@@ -133,17 +134,25 @@ void packTriangles(Scene& s)
 // lightmapp.cpp
 
 // uniforms
-Vec3 lightPos;
-Vec3 lightColor;
+Vec3 lightPos[2];
+Vec3 lightColor[2];
 
-Pixel fragmentShader(Vec3 pos)
+Pixel fragmentShader(Vec3 pos, Vec3 N)
 {
-  auto delta = pos - lightPos;
-  float lightness = 10.0f / dotProduct(delta, delta);
-  return { lightness* lightColor.x,
-                                 lightness* lightColor.y,
-                                 lightness* lightColor.z,
-           1 };
+  Vec3 r {};
+
+  for(int i = 0; i < 2; ++i)
+  {
+    auto lightVector = pos - lightPos[i];
+    auto dist = sqrt(dotProduct(lightVector, lightVector));
+    auto cosTheta = dotProduct(lightVector * (1.0 / dist), N);
+    float lightness = max(0, cosTheta) * 10.0f / (dist * dist);
+    r = r + Vec3 { lightness* lightColor[i].x,
+                            lightness* lightColor[i].y,
+                            lightness* lightColor[i].z };
+  }
+
+  return { r.x, r.y, r.z, 1 };
 }
 
 Vec3 barycentric(Vec2 p, Vec2 a, Vec2 b, Vec2 c)
@@ -169,6 +178,7 @@ Vec3 barycentric(Vec2 p, Vec2 a, Vec2 b, Vec2 c)
 struct Attributes
 {
   Vec3 pos;
+  Vec3 N;
 };
 
 void rasterizeTriangle(Image img, Vec2 v1, Attributes a1, Vec2 v2, Attributes a2, Vec2 v3, Attributes a3)
@@ -226,7 +236,8 @@ void rasterizeTriangle(Image img, Vec2 v1, Attributes a1, Vec2 v2, Attributes a2
         auto p = Vec2 { (float)x / img.width, (float)y / img.height };
         auto bary = barycentric(p, v1, v2, v3);
         auto pos = a1.pos * bary.x + a2.pos * bary.y + a3.pos * bary.z;
-        colorBuffer[x] = fragmentShader(pos);
+        auto N = a1.N * bary.x + a2.N * bary.y + a3.N * bary.z;
+        colorBuffer[x] = fragmentShader(pos, N);
       }
     }
 
@@ -236,21 +247,25 @@ void rasterizeTriangle(Image img, Vec2 v1, Attributes a1, Vec2 v2, Attributes a2
 
 void bakeLightmap(Scene& s, Image img)
 {
-  lightPos = s.lights[0].pos;
-  lightColor = s.lights[0].color;
+  lightPos[0] = s.lights[0].pos;
+  lightColor[0] = s.lights[0].color;
+  lightPos[1] = s.lights[1].pos;
+  lightColor[1] = s.lights[1].color;
 
   for(auto& t : s.triangles)
   {
-    Attributes a1;
-    a1.pos = t.v[0].pos;
-    Attributes a2;
-    a2.pos = t.v[1].pos;
-    Attributes a3;
-    a3.pos = t.v[2].pos;
+    Attributes attr[3];
+
+    for(int i = 0; i < 3; ++i)
+    {
+      attr[i].pos = t.v[i].pos;
+      attr[i].N = t.v[i].N;
+    }
+
     rasterizeTriangle(img,
-                      t.v[0].uvLightmap, a1,
-                      t.v[1].uvLightmap, a2,
-                      t.v[2].uvLightmap, a3);
+                      t.v[0].uvLightmap, attr[0],
+                      t.v[1].uvLightmap, attr[1],
+                      t.v[2].uvLightmap, attr[2]);
   }
 }
 
@@ -355,9 +370,9 @@ Scene loadScene(const char* path)
       int count = sscanf(buffer, "%d %d %d", &i1, &i2, &i3);
       assert(count == 3);
       s.triangles.push_back({
-        vertices[i1-1],
-        vertices[i2-1],
-        vertices[i3-1]
+        vertices[i1 - 1],
+        vertices[i2 - 1],
+        vertices[i3 - 1]
       });
     }
     else
@@ -457,24 +472,24 @@ void dumpSceneAsObj(Scene const& s, const char* filename)
 
   fprintf(fp, "# %d vertices\n", (int)allVertices.size());
 
-#define FMT "%.1f"
+#define FMT "%f"
 
   for(auto& vertex : allVertices)
   {
     fprintf(fp, "v " FMT " " FMT " " FMT "\n",
-        vertex.pos.x, vertex.pos.y, vertex.pos.z);
+            vertex.pos.x, vertex.pos.y, vertex.pos.z);
   }
 
   for(auto& vertex : allVertices)
   {
     fprintf(fp, "vn " FMT " " FMT " " FMT "\n",
-        vertex.N.x, vertex.N.y, vertex.N.z);
+            vertex.N.x, vertex.N.y, vertex.N.z);
   }
 
   for(auto& vertex : allVertices)
   {
     fprintf(fp, "vt " FMT " " FMT "\n",
-        vertex.uvLightmap.x, vertex.uvLightmap.y);
+            vertex.uvLightmap.x, vertex.uvLightmap.y);
   }
 
 #undef FMT
@@ -518,6 +533,9 @@ int main()
   // manually add a light
   s.lights.push_back({
     { 2, 1, 3 }, { 0.0, 0.4, 0.5 }, 0.01
+  });
+  s.lights.push_back({
+    { -2, -1, -3 }, { 0.5, 0.0, 0.0 }, 0.01
   });
 
   packTriangles(s);
