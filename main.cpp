@@ -319,6 +319,7 @@ void writeTarga(Image img, const char* filename)
 // -----------------------------------------------------------------------------
 // main.cpp
 #include <cstdio>
+#include <cstring> // memcmp
 
 Scene createDummyScene()
 {
@@ -384,6 +385,127 @@ Scene loadScene(const char* path)
                          &vertex.N.x, &vertex.N.y, &vertex.N.z);
       assert(count == 6);
       vertices.push_back(vertex);
+    }
+  }
+
+  fclose(fp);
+
+  return s;
+}
+
+template<typename T>
+struct Span
+{
+  T* ptr;
+  size_t len;
+
+  T & operator [] (int i) { return ptr[i]; }
+  void operator ++ () { ptr++; len--; }
+};
+
+using String = Span<char>;
+
+Scene loadSceneAsObj(const char* path)
+{
+  Scene s;
+
+  FILE* fp = fopen(path, "rb");
+  assert(fp);
+
+  static auto parseWord = [] (String& line) -> String
+    {
+      auto r = line;
+
+      while(line.len > 0 && line[0] != '\n' && line[0] != ' ')
+        ++line;
+
+      r.len = line.ptr - r.ptr;
+
+      if(line.len > 0)
+        ++line;
+
+      return r;
+    };
+
+  static auto parseFloat = [] (String& line)
+    {
+      return atof(parseWord(line).ptr);
+    };
+
+  static auto compare = [] (String s, const char* word)
+    {
+      auto n = strlen(word);
+
+      if(s.len != n)
+        return false;
+
+      return memcmp(s.ptr, word, n) == 0;
+    };
+
+  std::vector<Vec3> v;
+  std::vector<Vec3> vn;
+  std::vector<Vec2> vt;
+
+  char buffer[256] {};
+
+  while(fgets(buffer, (sizeof buffer) - 1, fp))
+  {
+    auto line = String { buffer, strlen(buffer) };
+
+    if(line[0] == '#')
+      continue;
+
+    auto word = parseWord(line);
+
+    if(compare(word, "v"))
+    {
+      Vec3 a;
+      a.x = parseFloat(line);
+      a.y = parseFloat(line);
+      a.z = parseFloat(line);
+      v.push_back(a);
+    }
+    else if(compare(word, "vt"))
+    {
+      Vec2 a;
+      a.x = parseFloat(line);
+      a.y = parseFloat(line);
+      vt.push_back(a);
+    }
+    else if(compare(word, "vn"))
+    {
+      Vec3 a;
+      a.x = parseFloat(line);
+      a.y = parseFloat(line);
+      a.z = parseFloat(line);
+      vn.push_back(a);
+    }
+    else if(compare(word, "f"))
+    {
+      std::vector<Vertex> vertices;
+
+      while(1)
+      {
+        auto w = parseWord(line);
+
+        if(w.len == 0)
+          break;
+
+        int iv, ivt, ivn;
+        int n = sscanf(w.ptr, "%d/%d/%d", &iv, &ivt, &ivn);
+        assert(n == 3);
+
+        vertices.push_back({ v[iv - 1], vn[ivn - 1], vt[ivt - 1] });
+
+        if(vertices.size() > 2)
+        {
+          Triangle t;
+          t.v[0] = vertices[0];
+          t.v[1] = vertices[vertices.size() - 2];
+          t.v[2] = vertices[vertices.size() - 1];
+          s.triangles.push_back(t);
+        }
+      }
     }
   }
 
@@ -528,14 +650,14 @@ using namespace std;
 int main()
 {
   auto s = createDummyScene();
-  s = loadScene("mesh.txt");
+  s = loadSceneAsObj("scene.obj");
 
   // manually add a light
   s.lights.push_back({
     { 2, 1, 3 }, { 0.0, 0.4, 0.5 }, 0.01
   });
   s.lights.push_back({
-    { -2, -1, -3 }, { 0.5, 0.0, 0.0 }, 0.01
+    { 0, 0, 0.12 }, { 0.01, 0.01, 0.0 }, 0.01
   });
 
   packTriangles(s);
