@@ -75,7 +75,8 @@ struct Image
   int stride;
 };
 
-inline float clamp(float val, float min, float max)
+template<typename T>
+inline T clamp(T val, T min, T max)
 {
   if(val < min)
     return min;
@@ -200,10 +201,10 @@ void rasterizeTriangle(Image img, Vec2 v1, Attributes a1, Vec2 v2, Attributes a2
   auto const Dy31 = y3 - y1;
 
   // Bounding rectangle
-  auto const minx = (int)clamp(min(min(x1, x2), x3), 0, img.width);
-  auto const maxx = (int)clamp(max(max(x1, x2), x3), 0, img.width);
-  auto const miny = (int)clamp(min(min(y1, y2), y3), 0, img.height);
-  auto const maxy = (int)clamp(max(max(y1, y2), y3), 0, img.height);
+  auto const minx = (int)clamp((int)min(min(x1, x2), x3), 0, img.width);
+  auto const maxx = (int)clamp((int)max(max(x1, x2), x3), 0, img.width);
+  auto const miny = (int)clamp((int)min(min(y1, y2), y3), 0, img.height);
+  auto const maxy = (int)clamp((int)max(max(y1, y2), y3), 0, img.height);
 
   auto colorBuffer = img.pels;
 
@@ -269,6 +270,42 @@ void bakeLightmap(Scene& s, Image img)
   }
 }
 
+void expandBorders(Image img)
+{
+  static auto const searchRange = 2;
+
+  for(int row = 0; row < img.height; ++row)
+  {
+    for(int col = 0; col < img.width; ++col)
+    {
+      auto& pel = img.pels[col + row * img.stride];
+
+      if(pel.a == 0)
+      {
+        for(int dy = -searchRange; dy <= searchRange; ++dy)
+        {
+          for(int dx = -searchRange; dx <= searchRange; ++dx)
+          {
+            auto x = clamp(col + dx, 0, img.width - 1);
+            auto y = clamp(row + dy, 0, img.height - 1);
+            auto nb = img.pels[x + y * img.stride];
+
+            if(nb.a == 1.0)
+            {
+              pel = nb;
+              pel.a = 0.99;
+              goto ok;
+            }
+          }
+        }
+
+        ok:
+        int a;
+      }
+    }
+  }
+}
+
 // -----------------------------------------------------------------------------
 // write_tga.cpp
 #include <cstdint>
@@ -300,10 +337,10 @@ void writeTarga(Image img, const char* filename)
       int srcOffset = col + row * img.stride;
       int dstOffset = col + row * img.width;
 
-      pixelData[dstOffset * 4 + 0] = (uint8_t)clamp(img.pels[srcOffset].b * 256.0, 0, 255);
-      pixelData[dstOffset * 4 + 1] = (uint8_t)clamp(img.pels[srcOffset].g * 256.0, 0, 255);
-      pixelData[dstOffset * 4 + 2] = (uint8_t)clamp(img.pels[srcOffset].r * 256.0, 0, 255);
-      pixelData[dstOffset * 4 + 3] = (uint8_t)clamp(img.pels[srcOffset].a * 256.0, 0, 255);
+      pixelData[dstOffset * 4 + 0] = (uint8_t)clamp(int(img.pels[srcOffset].b * 256.0), 0, 255);
+      pixelData[dstOffset * 4 + 1] = (uint8_t)clamp(int(img.pels[srcOffset].g * 256.0), 0, 255);
+      pixelData[dstOffset * 4 + 2] = (uint8_t)clamp(int(img.pels[srcOffset].r * 256.0), 0, 255);
+      pixelData[dstOffset * 4 + 3] = (uint8_t)clamp(int(img.pels[srcOffset].a * 256.0), 0, 255);
     }
   }
 
@@ -590,6 +627,10 @@ void dumpSceneAsObj(Scene const& s, const char* filename)
     }
   }
 
+  fprintf(fp, "mtllib mesh.out.mtl\n");
+  fprintf(fp, "o FullMesh\n");
+  fprintf(fp, "usemtl Material.001\n");
+
   fprintf(fp, "# generated\n");
 
   fprintf(fp, "# %d vertices\n", (int)allVertices.size());
@@ -652,12 +693,12 @@ int main()
   auto s = createDummyScene();
   s = loadSceneAsObj("scene.obj");
 
-  // manually add a light
+  // manually add lights
   s.lights.push_back({
     { 2, 1, 3 }, { 0.0, 0.4, 0.5 }, 0.01
   });
   s.lights.push_back({
-    { 0, 0, 0.12 }, { 0.01, 0.01, 0.0 }, 0.01
+    { 0, 0, 1 }, { 0.02, 0.02, 0.0 }, 0.01
   });
 
   packTriangles(s);
@@ -670,6 +711,7 @@ int main()
   img.pels = pixelData.data();
 
   bakeLightmap(s, img);
+  expandBorders(img);
   writeTarga(img, "lightmap.tga");
 
   return 0;
