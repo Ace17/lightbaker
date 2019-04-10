@@ -143,7 +143,7 @@ Pixel fragmentShader(Vec3 pos, Vec3 N)
 
   for(int i = 0; i < 2; ++i)
   {
-    auto lightVector = pos - lightPos[i];
+    auto lightVector = lightPos[i] - pos;
     auto dist = sqrt(dotProduct(lightVector, lightVector));
     auto cosTheta = dotProduct(lightVector * (1.0 / dist), N);
     float lightness = max(0, cosTheta) * 10.0f / (dist * dist);
