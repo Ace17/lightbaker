@@ -119,9 +119,10 @@ void packTriangles(Scene& s)
     int col = index % cols;
     int row = index / cols;
 
-    auto topLeft = Vec2 { col* step, row* step };
-    auto botLeft = Vec2 { col* step, row* step + size };
-    auto topRight = Vec2 { col* step + size, row* step };
+    auto margin = (step - size) * 0.5f;
+    auto topLeft = Vec2 { col* step + margin, row* step + margin };
+    auto botLeft = Vec2 { col* step + margin, row* step + size };
+    auto topRight = Vec2 { col* step + size, row* step + margin };
 
     t.v[0].uvLightmap = topLeft;
     t.v[1].uvLightmap = botLeft;
@@ -272,7 +273,7 @@ void bakeLightmap(Scene& s, Image img)
 
 void expandBorders(Image img)
 {
-  static auto const searchRange = 2;
+  static auto const searchRange = 1;
 
   for(int row = 0; row < img.height; ++row)
   {
@@ -302,6 +303,18 @@ void expandBorders(Image img)
         ok:
         int a;
       }
+    }
+  }
+
+  // threshold alpha
+  for(int row = 0; row < img.height; ++row)
+  {
+    for(int col = 0; col < img.width; ++col)
+    {
+      auto& pel = img.pels[col + row * img.stride];
+
+      if(pel.a > 0.5)
+        pel.a = 1.0;
     }
   }
 }
@@ -711,7 +724,8 @@ int main()
   img.pels = pixelData.data();
 
   bakeLightmap(s, img);
-  expandBorders(img);
+  for(int i=0;i < 8;++i)
+    expandBorders(img);
   writeTarga(img, "lightmap.tga");
 
   return 0;
