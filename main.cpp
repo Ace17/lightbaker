@@ -135,23 +135,19 @@ void packTriangles(Scene& s)
 // -----------------------------------------------------------------------------
 // lightmapp.cpp
 
-// uniforms
-Vec3 lightPos[2];
-Vec3 lightColor[2];
-
-Pixel fragmentShader(Vec3 pos, Vec3 N)
+Pixel fragmentShader(Scene const& s, Vec3 pos, Vec3 N)
 {
   Vec3 r {};
 
-  for(int i = 0; i < 2; ++i)
+  for(auto& light : s.lights)
   {
-    auto lightVector = lightPos[i] - pos;
+    auto lightVector = light.pos - pos;
     auto dist = sqrt(dotProduct(lightVector, lightVector));
     auto cosTheta = dotProduct(lightVector * (1.0 / dist), N);
     float lightness = max(0, cosTheta) * 10.0f / (dist * dist);
-    r = r + Vec3 { lightness* lightColor[i].x,
-                            lightness* lightColor[i].y,
-                            lightness* lightColor[i].z };
+    r = r + Vec3 { lightness* light.color.x,
+                                          lightness* light.color.y,
+                                          lightness* light.color.z };
   }
 
   return { r.x, r.y, r.z, 1 };
@@ -183,7 +179,7 @@ struct Attributes
   Vec3 N;
 };
 
-void rasterizeTriangle(Image img, Vec2 v1, Attributes a1, Vec2 v2, Attributes a2, Vec2 v3, Attributes a3)
+void rasterizeTriangle(Image img, Scene const& scene, Vec2 v1, Attributes a1, Vec2 v2, Attributes a2, Vec2 v3, Attributes a3)
 {
   auto const x1 = (int)(v1.x * img.width);
   auto const x2 = (int)(v2.x * img.width);
@@ -239,7 +235,7 @@ void rasterizeTriangle(Image img, Vec2 v1, Attributes a1, Vec2 v2, Attributes a2
         auto bary = barycentric(p, v1, v2, v3);
         auto pos = a1.pos * bary.x + a2.pos * bary.y + a3.pos * bary.z;
         auto N = a1.N * bary.x + a2.N * bary.y + a3.N * bary.z;
-        colorBuffer[x] = fragmentShader(pos, N);
+        colorBuffer[x] = fragmentShader(scene, pos, N);
       }
     }
 
@@ -249,11 +245,6 @@ void rasterizeTriangle(Image img, Vec2 v1, Attributes a1, Vec2 v2, Attributes a2
 
 void bakeLightmap(Scene& s, Image img)
 {
-  lightPos[0] = s.lights[0].pos;
-  lightColor[0] = s.lights[0].color;
-  lightPos[1] = s.lights[1].pos;
-  lightColor[1] = s.lights[1].color;
-
   for(auto& t : s.triangles)
   {
     Attributes attr[3];
@@ -265,6 +256,7 @@ void bakeLightmap(Scene& s, Image img)
     }
 
     rasterizeTriangle(img,
+                      s,
                       t.v[0].uvLightmap, attr[0],
                       t.v[1].uvLightmap, attr[1],
                       t.v[2].uvLightmap, attr[2]);
@@ -724,8 +716,10 @@ int main()
   img.pels = pixelData.data();
 
   bakeLightmap(s, img);
-  for(int i=0;i < 8;++i)
+
+  for(int i = 0; i < 8; ++i)
     expandBorders(img);
+
   writeTarga(img, "lightmap.tga");
 
   return 0;
