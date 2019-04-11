@@ -383,6 +383,46 @@ void expandBorders(Image img)
   }
 }
 
+void blur(Image img)
+{
+  static auto const blurSize = 2;
+
+  for(int row = 0; row < img.height; ++row)
+  {
+    for(int col = 0; col < img.width; ++col)
+    {
+      auto& pel = img.pels[col + row * img.stride];
+
+      if(pel.a != 1)
+        continue;
+
+      auto sum = Vec3 {};
+      int count = 0;
+
+      for(int dy = -blurSize; dy <= blurSize; ++dy)
+      {
+        for(int dx = -blurSize; dx <= blurSize; ++dx)
+        {
+          auto x = clamp(col + dx, 0, img.width - 1);
+          auto y = clamp(row + dy, 0, img.height - 1);
+          auto nb = img.pels[x + y * img.stride];
+
+          if(nb.a == 1.0)
+          {
+            sum = sum + Vec3 { nb.r, nb.g, nb.b };
+            ++count;
+          }
+        }
+      }
+
+      sum = sum * (1.0 / count);
+      pel.r = sum.x;
+      pel.g = sum.y;
+      pel.b = sum.z;
+    }
+  }
+}
+
 // -----------------------------------------------------------------------------
 // write_tga.cpp
 #include <cstdint>
@@ -791,6 +831,8 @@ int main()
 
   for(int i = 0; i < 8; ++i)
     expandBorders(img);
+
+  blur(img);
 
   writeTarga(img, "lightmap.tga");
 
