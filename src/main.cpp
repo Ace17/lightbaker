@@ -419,7 +419,7 @@ int main()
   dumpSceneAsObj(s, "mesh.out.obj");
 
   Image img;
-  img.stride = img.width = img.height = 4096;
+  img.stride = img.width = img.height = 2048;
   std::vector<Pixel> pixelData(img.width* img.height);
   img.pels = pixelData.data();
 
