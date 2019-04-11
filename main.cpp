@@ -14,6 +14,15 @@ float dotProduct(Vec3 a, Vec3 b)
   return a.x * b.x + a.y * b.y + a.z * b.z;
 }
 
+Vec3 crossProduct(Vec3 a, Vec3 b)
+{
+  Vec3 r;
+  r.x = a.y * b.z - a.z * b.y;
+  r.y = a.z * b.x - a.x * b.z;
+  r.z = a.x * b.y - a.y * b.x;
+  return r;
+}
+
 struct Vec2
 {
   float x, y;
@@ -135,13 +144,76 @@ void packTriangles(Scene& s)
 // -----------------------------------------------------------------------------
 // lightmapp.cpp
 
+Vec3 normalize(Vec3 vec)
+{
+  auto const magnitude = dotProduct(vec, vec);
+  return vec * (1.0 / sqrt(magnitude));
+}
+
+// return 'false' if the ray hit something
+bool raycast(Triangle const& t, Vec3 rayStart, Vec3 rayDelta)
+{
+  // TODO: precompute this
+  auto N = normalize(crossProduct(t.v[1].pos - t.v[0].pos, t.v[2].pos - t.v[0].pos));
+
+  // coordinates along the normal axis
+  auto t1 = dotProduct(N, rayStart);
+  auto t2 = dotProduct(N, rayStart + rayDelta);
+  auto plane = dotProduct(N, t.v[0].pos);
+
+  if(t1 > plane && t2 > plane)
+    return true; // plane was not crossed
+
+  if(t1 < plane && t2 < plane)
+    return true; // plane was not crossed
+
+  // compute intersection point
+  auto fraction = (plane - t1) / (t2 - t1);
+  auto I = rayStart + rayDelta * fraction;
+
+  // check if inside triangle
+  for(int k = 0; k < 3; ++k)
+  {
+    auto a = t.v[(k + 0) % 3].pos;
+    auto b = t.v[(k + 1) % 3].pos;
+    auto outDir = crossProduct(b - a, N);
+
+    if(dotProduct(I - a, outDir) >= 0)
+      return true; // not in triangle
+  }
+
+  return false;
+}
+
+bool raycast(Scene const& s, Vec3 rayStart, Vec3 rayDelta)
+{
+  for(auto& t : s.triangles)
+  {
+    if(!raycast(t, rayStart, rayDelta))
+      return false;
+  }
+
+  return true;
+}
+
 Pixel fragmentShader(Scene const& s, Vec3 pos, Vec3 N)
 {
   Vec3 r {};
 
+  // ambient light
+  r = r + Vec3 { 0.1, 0.1, 0.1 };
+
+  // avoid aliasing artifacts due to the light ray hitting the surface the fragment lies on
+  auto const TOLERANCE = 0.01;
+
   for(auto& light : s.lights)
   {
     auto lightVector = light.pos - pos;
+
+    // light ray is interrupted by an object
+    if(!raycast(s, light.pos, lightVector * (-1 + TOLERANCE)))
+      continue;
+
     auto dist = sqrt(dotProduct(lightVector, lightVector));
     auto cosTheta = dotProduct(lightVector * (1.0 / dist), N);
     float lightness = max(0, cosTheta) * 10.0f / (dist * dist);
@@ -703,7 +775,7 @@ int main()
     { 2, 1, 3 }, { 0.0, 0.4, 0.5 }, 0.01
   });
   s.lights.push_back({
-    { 0, 0, 1 }, { 0.02, 0.02, 0.0 }, 0.01
+    { 0, 0, 5 }, { 0.2, 0.2, 0.0 }, 0.01
   });
 
   packTriangles(s);
@@ -711,7 +783,7 @@ int main()
   dumpSceneAsObj(s, "mesh.out.obj");
 
   Image img;
-  img.stride = img.width = img.height = 2048;
+  img.stride = img.width = img.height = 4096;
   std::vector<Pixel> pixelData(img.width* img.height);
   img.pels = pixelData.data();
 
