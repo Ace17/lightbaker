@@ -11,7 +11,7 @@ Vec3 normalize(Vec3 vec)
 }
 
 // return 'false' if the ray hit something
-bool raycast(Triangle const& t, Vec3 rayStart, Vec3 rayDelta)
+bool raycast(Triangle t, Vec3 rayStart, Vec3 rayDelta)
 {
   auto const N = t.N;
 
