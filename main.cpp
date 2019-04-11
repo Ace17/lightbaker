@@ -53,7 +53,11 @@ struct Vertex
 
 struct Triangle
 {
+  // read from input
   Vertex v[3];
+
+  // computed
+  Vec3 N;
 };
 
 struct Light
@@ -153,8 +157,7 @@ Vec3 normalize(Vec3 vec)
 // return 'false' if the ray hit something
 bool raycast(Triangle const& t, Vec3 rayStart, Vec3 rayDelta)
 {
-  // TODO: precompute this
-  auto N = normalize(crossProduct(t.v[1].pos - t.v[0].pos, t.v[2].pos - t.v[0].pos));
+  auto const N = t.N;
 
   // coordinates along the normal axis
   auto t1 = dotProduct(N, rayStart);
@@ -668,6 +671,12 @@ Scene loadSceneAsObj(const char* path)
   return s;
 }
 
+void computeNormals(Scene& s)
+{
+  for(auto& t : s.triangles)
+    t.N = normalize(crossProduct(t.v[1].pos - t.v[0].pos, t.v[2].pos - t.v[0].pos));
+}
+
 void dumpScene(Scene const& s, const char* filename)
 {
   FILE* fp = fopen(filename, "wb");
@@ -809,6 +818,8 @@ int main()
 {
   auto s = createDummyScene();
   s = loadSceneAsObj("scene.obj");
+
+  computeNormals(s);
 
   // manually add lights
   s.lights.push_back({
