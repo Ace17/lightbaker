@@ -1,7 +1,7 @@
 # Blender MTL File: 'scene.blend'
-# Material Count: 1
+# Material Count: 2
 
-newmtl Material.001
+newmtl MatOne
 Ns 96.078431
 Ka 1.000000 1.000000 1.000000
 Kd 0.640000 0.640000 0.640000
@@ -10,4 +10,15 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.000000
 d 1.000000
 illum 0
-map_Kd texture.png
+map_Kd texture_one.png
+
+newmtl MatTwo
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.640000 0.640000 0.640000
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 0
+map_Kd texture_two.png
