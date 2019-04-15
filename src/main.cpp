@@ -325,6 +325,8 @@ void dumpScene(Scene const& s, const char* filename)
 void dumpSceneAsObj(Scene const& s, const char* filename)
 {
   FILE* fp = fopen(filename, "wb");
+  assert(fp);
+
   std::vector<Vertex> allVertices;
   std::vector<int> allIndices;
 
@@ -338,7 +340,7 @@ void dumpSceneAsObj(Scene const& s, const char* filename)
     }
   }
 
-  fprintf(fp, "mtllib mesh.out.mtl\n");
+  fprintf(fp, "mtllib mesh.mtl\n");
   fprintf(fp, "o FullMesh\n");
   fprintf(fp, "usemtl Material.001\n");
 
@@ -399,10 +401,16 @@ using namespace std;
 // omnilights
 // 0 0 0 - 0 0 0
 
-int main()
+int main(int argc, char* argv[])
 {
+  if(argc != 2)
+  {
+    fprintf(stderr, "Usage: %s <scene.obj>\n", argv[0]);
+    return 1;
+  }
+
   auto s = createDummyScene();
-  s = loadSceneAsObj("scene.obj");
+  s = loadSceneAsObj(argv[1]);
 
   computeNormals(s);
 
@@ -415,8 +423,7 @@ int main()
   });
 
   packTriangles(s);
-  dumpScene(s, "mesh.out.txt");
-  dumpSceneAsObj(s, "mesh.out.obj");
+  dumpSceneAsObj(s, "out/mesh.obj");
 
   Image img;
   img.stride = img.width = img.height = 2048;
@@ -430,7 +437,7 @@ int main()
 
   blur(img);
 
-  writeTarga(img, "lightmap.tga");
+  writeTarga(img, "out/lightmap.tga");
 
   return 0;
 }

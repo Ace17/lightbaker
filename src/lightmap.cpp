@@ -282,4 +282,3 @@ void blur(Image img)
   }
 }
 
-
