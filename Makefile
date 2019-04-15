@@ -6,6 +6,7 @@ SRCS:=\
 	src/main.cpp\
 	src/packer.cpp\
 	src/lightmap.cpp\
+	src/wavefront.cpp\
 
 
 $(BIN)/lb.exe: $(SRCS:%=$(BIN)/%.o)
