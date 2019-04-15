@@ -36,6 +36,11 @@ void writeTarga(Image img, const char* filename)
 
   std::vector<uint8_t> pixelData(img.width* img.height * 4);
 
+  static auto convert = [] (float value)
+    {
+      return (uint8_t)clamp(int(value * 256.0), 0, 255);
+    };
+
   for(int row = 0; row < img.height; ++row)
   {
     for(int col = 0; col < img.width; ++col)
@@ -43,10 +48,10 @@ void writeTarga(Image img, const char* filename)
       int srcOffset = col + row * img.stride;
       int dstOffset = col + row * img.width;
 
-      pixelData[dstOffset * 4 + 0] = (uint8_t)clamp(int(img.pels[srcOffset].b * 256.0), 0, 255);
-      pixelData[dstOffset * 4 + 1] = (uint8_t)clamp(int(img.pels[srcOffset].g * 256.0), 0, 255);
-      pixelData[dstOffset * 4 + 2] = (uint8_t)clamp(int(img.pels[srcOffset].r * 256.0), 0, 255);
-      pixelData[dstOffset * 4 + 3] = (uint8_t)clamp(int(img.pels[srcOffset].a * 256.0), 0, 255);
+      pixelData[dstOffset * 4 + 0] = convert(img.pels[srcOffset].b);
+      pixelData[dstOffset * 4 + 1] = convert(img.pels[srcOffset].g);
+      pixelData[dstOffset * 4 + 2] = convert(img.pels[srcOffset].r);
+      pixelData[dstOffset * 4 + 3] = convert(img.pels[srcOffset].a);
     }
   }
 
