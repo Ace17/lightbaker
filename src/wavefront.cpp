@@ -24,7 +24,7 @@ Scene loadSceneAsObj(const char* filename)
       while(line.len > 0 && line[0] != '\n' && line[0] != ' ')
         ++line;
 
-      r.len = line.ptr - r.ptr;
+      r.len = line.data - r.data;
 
       if(line.len > 0)
         ++line;
@@ -34,7 +34,7 @@ Scene loadSceneAsObj(const char* filename)
 
   static auto parseFloat = [] (String& line)
     {
-      return atof(parseWord(line).ptr);
+      return atof(parseWord(line).data);
     };
 
   static auto compare = [] (String s, const char* word)
@@ -44,7 +44,7 @@ Scene loadSceneAsObj(const char* filename)
       if(s.len != n)
         return false;
 
-      return memcmp(s.ptr, word, n) == 0;
+      return memcmp(s.data, word, n) == 0;
     };
 
   std::vector<Vec3> v;
@@ -97,7 +97,7 @@ Scene loadSceneAsObj(const char* filename)
           break;
 
         int iv, ivt, ivn;
-        int n = sscanf(w.ptr, "%d/%d/%d", &iv, &ivt, &ivn);
+        int n = sscanf(w.data, "%d/%d/%d", &iv, &ivt, &ivn);
         assert(n == 3);
 
         vertices.push_back({ v[iv - 1], vn[ivn - 1], vt[ivt - 1] });
