@@ -24,12 +24,14 @@ inline T clamp(T val, T min, T max)
   return val;
 }
 
-inline float min(float a, float b)
+template<typename T>
+inline T min(T a, T b)
 {
   return a < b ? a : b;
 }
 
-inline float max(float a, float b)
+template<typename T>
+inline T max(T a, T b)
 {
   return a > b ? a : b;
 }

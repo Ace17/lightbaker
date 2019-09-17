@@ -75,7 +75,7 @@ Pixel fragmentShader(Scene const& s, Vec3 pos, Vec3 N)
 
     auto dist = sqrt(dotProduct(lightVector, lightVector));
     auto cosTheta = dotProduct(lightVector * (1.0 / dist), N);
-    float lightness = max(0, cosTheta) * 10.0f / (dist * dist);
+    float lightness = max(0.0f, cosTheta) * 10.0f / (dist * dist);
     r = r + Vec3 { lightness* light.color.x,
                                           lightness* light.color.y,
                                           lightness* light.color.z };
@@ -129,10 +129,10 @@ void rasterizeTriangle(Image img, Scene const& scene, Vec2 v1, Attributes a1, Ve
   auto const Dy31 = y3 - y1;
 
   // Bounding rectangle
-  auto const minx = (int)clamp((int)min(min(x1, x2), x3), 0, img.width);
-  auto const maxx = (int)clamp((int)max(max(x1, x2), x3), 0, img.width);
-  auto const miny = (int)clamp((int)min(min(y1, y2), y3), 0, img.height);
-  auto const maxy = (int)clamp((int)max(max(y1, y2), y3), 0, img.height);
+  auto const minx = clamp(min(min(x1, x2), x3), 0, img.width);
+  auto const maxx = clamp(max(max(x1, x2), x3), 0, img.width);
+  auto const miny = clamp(min(min(y1, y2), y3), 0, img.height);
+  auto const maxy = clamp(max(max(y1, y2), y3), 0, img.height);
 
   auto colorBuffer = img.pels;
 
